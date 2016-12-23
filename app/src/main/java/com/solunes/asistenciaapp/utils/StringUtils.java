@@ -14,6 +14,8 @@ public class StringUtils {
     public static String DATE_FORMAT_1 = "dd/MM/yyyy";
     public static String HUMAN_DATE_FORMAT = "dd, MMM yyyy";
     public static String HUMAN_HOUR_FORMAT = "HH:mm";
+    public static String HUMAN_DATE_FORMAT2 = "dd";
+    public static String HUMAN_DATE_FORMAT3 = "EE";
 
     /**
      * Metodo para obtener una fecha string apartir de un Date
