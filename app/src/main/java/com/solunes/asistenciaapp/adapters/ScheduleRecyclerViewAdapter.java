@@ -47,10 +47,9 @@ public class ScheduleRecyclerViewAdapter extends RecyclerView.Adapter<ScheduleRe
     public void onBindViewHolder(ViewHolder holder, int position) {
         ItemSchedule itemSchedule = itemSchedules.get(position);
         Date date = StringUtils.formateStringFromDate(StringUtils.DATE_FORMAT, itemSchedule.getDate());
-        String fromstring = StringUtils.formateDateFromstring(StringUtils.HUMAN_DATE_FORMAT2, date);
-        String fromstring2 = StringUtils.formateDateFromstring(StringUtils.HUMAN_DATE_FORMAT3, date);
-        holder.dayNumber.setText(fromstring);
-        holder.dayText.setText(fromstring2);
+        String fromstring = StringUtils.formateDateFromstring(StringUtils.HUMAN_DATE_FORMAT, date);
+        holder.dayText.setText(fromstring);
+        holder.layoutSchedule.removeAllViews();
         for (Schedule schedule : itemSchedule.getSchedules()) {
             View view = LayoutInflater.from(context).inflate(R.layout.layout_hours, null);
             TextView textIn = (TextView) view.findViewById(R.id.text_schedule_in);
@@ -73,14 +72,12 @@ public class ScheduleRecyclerViewAdapter extends RecyclerView.Adapter<ScheduleRe
 
     class ViewHolder extends RecyclerView.ViewHolder {
         final View mView;
-        final TextView dayNumber;
         final TextView dayText;
-        LinearLayout layoutSchedule;
+        final LinearLayout layoutSchedule;
 
         ViewHolder(View view) {
             super(view);
             mView = view;
-            dayNumber = (TextView) view.findViewById(R.id.day_number);
             dayText = (TextView) view.findViewById(R.id.day_text);
             layoutSchedule = (LinearLayout) view.findViewById(R.id.item_schedule);
         }
