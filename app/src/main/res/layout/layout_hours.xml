@@ -13,6 +13,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:textColor="@android:color/black"
         android:text="Entrada: 08:00" />
 
     <ImageView
@@ -26,6 +27,7 @@
 
     <TextView
         android:id="@+id/text_schedule_out"
+        android:textColor="@android:color/black"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"

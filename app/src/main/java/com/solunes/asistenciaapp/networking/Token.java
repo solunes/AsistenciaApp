@@ -44,7 +44,7 @@ public class Token {
         Hashtable<String, String> params = new Hashtable<>();
         params.put("username", user.getUsername());
         params.put("password", user.getPassword());
-        new PostRequest("token", params, null, "Urls.urlauthenticate(context)", new CallbackAPI() {
+        new PostRequest("token", params, null, "http://asistencia.solunes.com/api-auth/authenticate", new CallbackAPI() {
             @Override
             public void onSuccess(String result, int statusCode) {
                 JSONObject jsonObject = null;

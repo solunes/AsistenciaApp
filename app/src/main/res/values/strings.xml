@@ -3,4 +3,12 @@
     <string name="menu_logout">Cerrar Sesion</string>
     <string name="menu_notifications">Notificaciones</string>
     <string name="menu_schedule">horarios</string>
+
+    <string name="dialog_title_geolocation">Servicio de Localización</string>
+    <string name="dialog_message_geolocation">Es necesario activar el GPS</string>
+    <string name="dialog_action_accept">Aceptar</string>
+    <string name="dialog_action_cancel">Cancel</string>
+
+    <string name="button_text_in">Ingresar</string>
+    <string name="button_text_out">Salir</string>
 </resources>

@@ -2,7 +2,6 @@ package com.solunes.asistenciaapp.adapters;
 
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
-import android.util.AttributeSet;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,12 +14,8 @@ import com.solunes.asistenciaapp.R;
 import com.solunes.asistenciaapp.Schedule;
 import com.solunes.asistenciaapp.utils.StringUtils;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
 
 /**
  * Created by jhonlimaster on 21-12-16.
@@ -28,28 +23,36 @@ import java.util.Iterator;
 
 public class ScheduleRecyclerViewAdapter extends RecyclerView.Adapter<ScheduleRecyclerViewAdapter.ViewHolder> {
 
+    private static final String TAG = "ScheduleRecyclerViewAda";
     private Context context;
     private ArrayList<ItemSchedule> itemSchedules;
 
     public ScheduleRecyclerViewAdapter(Context context, ArrayList<ItemSchedule> items) {
         this.context = context;
         itemSchedules = items;
+        Log.e(TAG, "ScheduleRecyclerViewAdapter: "+ itemSchedules.size() );
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_schedule, parent, false);
+        Log.e(TAG, "onCreateViewHolder: ");
         return new ViewHolder(view);
     }
 
+
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
+        Log.e(TAG, "onBindViewHolder: " + position);
         ItemSchedule itemSchedule = itemSchedules.get(position);
         Date date = StringUtils.formateStringFromDate(StringUtils.DATE_FORMAT, itemSchedule.getDate());
         String fromstring = StringUtils.formateDateFromstring(StringUtils.HUMAN_DATE_FORMAT, date);
         holder.dayText.setText(fromstring);
         holder.layoutSchedule.removeAllViews();
+        if (itemSchedule.getSchedules().size() == 0) {
+            holder.layoutSchedule.setVisibility(View.GONE);
+        }
         for (Schedule schedule : itemSchedule.getSchedules()) {
             View view = LayoutInflater.from(context).inflate(R.layout.layout_hours, null);
             TextView textIn = (TextView) view.findViewById(R.id.text_schedule_in);
@@ -71,13 +74,11 @@ public class ScheduleRecyclerViewAdapter extends RecyclerView.Adapter<ScheduleRe
     }
 
     class ViewHolder extends RecyclerView.ViewHolder {
-        final View mView;
         final TextView dayText;
         final LinearLayout layoutSchedule;
 
         ViewHolder(View view) {
             super(view);
-            mView = view;
             dayText = (TextView) view.findViewById(R.id.day_text);
             layoutSchedule = (LinearLayout) view.findViewById(R.id.item_schedule);
         }

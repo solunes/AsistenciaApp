@@ -26,11 +26,12 @@ public class GetRequest extends AsyncTask<String, Void, String> {
 
     /**
      * Contructor para la clase
-     * @param token token para la consulta, si no hay tiene que ser null
+     *
+     * @param token       token para la consulta, si no hay tiene que ser null
      * @param urlEndpoint url del endpoint para hacer la consulta
      * @param callbackAPI interface para las respuestas
      */
-    public GetRequest(String token,String urlEndpoint, CallbackAPI callbackAPI) {
+    public GetRequest(String token, String urlEndpoint, CallbackAPI callbackAPI) {
         this.headers = new Hashtable<>();
         this.urlEndpoint = urlEndpoint;
         this.callbackAPI = callbackAPI;
@@ -49,8 +50,9 @@ public class GetRequest extends AsyncTask<String, Void, String> {
             urlConnection.setConnectTimeout(TIMEOUT_VALUE);
             urlConnection.setRequestMethod("GET");
 
-            if (this.token != null)
+            if (this.token != null) {
                 urlConnection.setRequestProperty("Authorization", "Bearer " + this.token);
+            }
 
             urlConnection.setDoInput(true);
             urlConnection.connect();
@@ -95,7 +97,7 @@ public class GetRequest extends AsyncTask<String, Void, String> {
                 messageError += jsonObject.getString("message");
                 messageError += " (" + jsonObject.getString("status_code") + ")";
             } catch (Exception e) {
-                callbackAPI.onFailed(messageError, getStatusCode());
+                callbackAPI.onFailed(result, getStatusCode());
             }
             callbackAPI.onFailed(messageError, getStatusCode());
         }
