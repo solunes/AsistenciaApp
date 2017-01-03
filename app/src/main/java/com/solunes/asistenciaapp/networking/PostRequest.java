@@ -30,12 +30,12 @@ public class PostRequest extends AsyncTask<String, Void, String> {
     private CallbackAPI callbackAPI;
 
 
-
     /**
      * Constructor de la clase
-     * @param token token para la consulta, si no hay tiene que ser null
-     * @param params un hashtable con los parametros para la consulta
-     * @param headers un hashtable con header para la consulta
+     *
+     * @param token       token para la consulta, si no hay tiene que ser null
+     * @param params      un hashtable con los parametros para la consulta
+     * @param headers     un hashtable con header para la consulta
      * @param urlEndpoint un string con la url para la consulta
      * @param callbackAPI interface para hacer las respuestas
      */
@@ -75,8 +75,6 @@ public class PostRequest extends AsyncTask<String, Void, String> {
 
             urlConnection.connect();
             statusCode = urlConnection.getResponseCode();
-
-            Log.e(TAG, "StatusCode: " + statusCode);
 
             if (isSuccessStatusCode()) {
                 return getStringFromStream(urlConnection.getInputStream());
@@ -118,6 +116,7 @@ public class PostRequest extends AsyncTask<String, Void, String> {
                 messageError += jsonObject.getString("message");
                 messageError += " (" + jsonObject.getString("status_code") + ")";
             } catch (JSONException e) {
+                callbackAPI.onFailed(result, getStatusCode());
             }
             callbackAPI.onFailed(messageError, getStatusCode());
         }

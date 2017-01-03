@@ -2,22 +2,31 @@ package com.solunes.asistenciaapp.activities;
 
 import android.content.Intent;
 import android.os.Build;
+import android.os.Bundle;
 import android.support.design.widget.TextInputLayout;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Toast;
 
 import com.solunes.asistenciaapp.R;
-import com.solunes.asistenciaapp.networking.CallbackAPI;
-import com.solunes.asistenciaapp.networking.GetRequest;
+import com.solunes.asistenciaapp.models.User;
+import com.solunes.asistenciaapp.networking.Token;
+import com.solunes.asistenciaapp.utils.StringUtils;
 import com.solunes.asistenciaapp.utils.UserPreferences;
 
-public class LoginActivity extends AppCompatActivity implements CallbackAPI {
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.Date;
+
+import static com.solunes.asistenciaapp.networking.Token.KEY_EXPIRATION_DATE;
+import static com.solunes.asistenciaapp.networking.Token.KEY_TOKEN;
+
+public class LoginActivity extends AppCompatActivity {
 
     private static final String TAG = "LoginActivity";
     public static final String KEY_LOGIN = "login";
@@ -39,8 +48,8 @@ public class LoginActivity extends AppCompatActivity implements CallbackAPI {
         }
 
         Window window = getWindow();
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
             window.setStatusBarColor(getResources().getColor(R.color.colorPrimary));
         }
 
@@ -68,27 +77,52 @@ public class LoginActivity extends AppCompatActivity implements CallbackAPI {
                 }
                 if (valid) {
                     // TODO: 21-12-16 consulta al API para obtener el usuario
-//                    new GetRequest(null, "http://asistencia.solunes.com", LoginActivity.this).execute();
-                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                    startActivity(intent);
-                    UserPreferences.putBoolean(LoginActivity.this, KEY_LOGIN, true);
-                    finish();
+                    String token = UserPreferences.getString(getApplicationContext(), KEY_TOKEN);
+                    String expirationDate = UserPreferences.getString(getApplicationContext(), KEY_EXPIRATION_DATE);
+                    User user = new User();
+                    user.setUsername(LoginActivity.this.user.getText().toString());
+                    user.setPassword(pass.getText().toString());
+                    Date date = null;
+                    if (expirationDate != null) {
+                        date = StringUtils.formateStringFromDate(StringUtils.DATE_FORMAT, expirationDate);
+                    }
+                    Token.getToken(token, date, user, new Token.CallbackToken() {
+                        @Override
+                        public void onToken(String token) {
+                            Log.e(TAG, "onToken: " + token);
+                            startActivity();
+                        }
+
+                        @Override
+                        public void onSuccessToken(String result) {
+                            Log.e(TAG, "onSuccessToken: " + result);
+                            JSONObject jsonObject = null;
+                            try {
+                                jsonObject = new JSONObject(result);
+                                String token = jsonObject.getString("token");
+                                String expirationDate = jsonObject.getString("expirationDate");
+                                UserPreferences.putString(getApplicationContext(), KEY_TOKEN, token);
+                                UserPreferences.putString(getApplicationContext(), KEY_EXPIRATION_DATE, expirationDate);
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                            startActivity();
+                        }
+
+                        @Override
+                        public void onFailToken(String reason) {
+                            Log.e(TAG, "onFailToken: " + reason);
+                        }
+                    });
                 }
             }
         });
     }
 
-    @Override
-    public void onSuccess(String result, int statusCode) {
-        // TODO: 21-12-16 get user_id, token, expiration_date, schedules,
+    private void startActivity() {
         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
         startActivity(intent);
         UserPreferences.putBoolean(LoginActivity.this, KEY_LOGIN, true);
         finish();
-    }
-
-    @Override
-    public void onFailed(String reason, int statusCode) {
-        Toast.makeText(LoginActivity.this, "Usuario o contraseña incorrectos", Toast.LENGTH_SHORT).show();
     }
 }

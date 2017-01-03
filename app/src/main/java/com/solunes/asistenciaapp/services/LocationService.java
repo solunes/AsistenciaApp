@@ -267,7 +267,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
                 }
                 locationManager.removeUpdates(locationListener);
             } catch (Exception ex) {
-                Log.i(TAG, "fail to remove location listners, ignore", ex);
+//                Log.i(TAG, "fail to remove location listners, ignore", ex);
             }
         }
     }

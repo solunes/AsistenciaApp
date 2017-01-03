@@ -50,6 +50,7 @@ import com.solunes.asistenciaapp.Schedule;
 import com.solunes.asistenciaapp.adapters.ScheduleRecyclerViewAdapter;
 import com.solunes.asistenciaapp.networking.CallbackAPI;
 import com.solunes.asistenciaapp.networking.GetRequest;
+import com.solunes.asistenciaapp.networking.Token;
 import com.solunes.asistenciaapp.services.LocationService;
 import com.solunes.asistenciaapp.utils.UserPreferences;
 
@@ -69,6 +70,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
     private LocationService locationService;
     private Intent intentService;
     private String actualSchedule;
+    private String token;
 
     private Button buttonAction;
     private View progressButton;
@@ -93,6 +95,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setHasFixedSize(true);
 
+        token = UserPreferences.getString(this, Token.KEY_TOKEN);
         inside = UserPreferences.getBoolean(this, KEY_INSIDE);
         progressButton = findViewById(R.id.progress_button);
         buttonAction = (Button) findViewById(R.id.button_action);
@@ -140,8 +143,10 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                 startActivity(new Intent(MainActivity.this, NotificationActivity.class));
                 return true;
             case R.id.action_method:
+                item.setChecked(!item.isChecked());
                 locationService.stopRequest(selectMethod);
                 selectMethod = item.isChecked();
+                Log.e(TAG, "onOptionsItemSelected: " + selectMethod);
                 return true;
             case R.id.action_logout:
                 UserPreferences.putBoolean(this, LoginActivity.KEY_LOGIN, false);
@@ -154,7 +159,6 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
     }
 
     private void requestData() {
-        String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjIsImlzcyI6Imh0dHA6XC9cL2VuZGUyLnNvbHVuZXMuY29tXC9hcGktYXV0aFwvYXV0aGVudGljYXRlIiwiaWF0IjoxNDc5MzM2MjY2LCJleHAiOjE1MTA4NzIyNjYsIm5iZiI6MTQ3OTMzNjI2NiwianRpIjoiMDkyODE5ZTAxMjQyYjlhNWJkMWIwN2ZjMmViYmI0MWEifQ.h3GuzlopnYQmnArIK5DlD4AYWSxKK2A0W1D-vsxNznI";
         new GetRequest(token, "http://asistencia.solunes.com/api/check-location/1/check/-16.489689/68.119294/0.0/" + methodLocation(), new CallbackAPI() {
             @Override
             public void onSuccess(String result, int statusCode) {
@@ -164,35 +168,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                     String in = jsonObjectActualSchedule.getString("in");
                     String out = jsonObjectActualSchedule.getString("out");
                     actualSchedule = in + " - " + out;
-                    JSONObject jsonObject = jsonObjectRoot.getJSONObject("schedules");
-                    Iterator<String> keys = jsonObject.keys();
-                    while (keys.hasNext()) {
-                        String next = keys.next();
-                        ItemSchedule itemSchedule = new ItemSchedule();
-                        itemSchedule.setDate(next);
-                        ArrayList<Schedule> schedules = new ArrayList<>();
-                        JSONArray jsonArray = jsonObject.getJSONArray(next);
-                        for (int i = 0; i < jsonArray.length(); i++) {
-                            JSONObject objectSchedule = jsonArray.getJSONObject(i);
-                            Schedule schedule = new Schedule();
-                            schedule.setIn(objectSchedule.getString("in"));
-                            schedule.setOut(objectSchedule.getString("out"));
-                            if (!objectSchedule.isNull("observations")) {
-                                JSONArray observations = objectSchedule.getJSONArray("observations");
-                                ArrayList<String> strings = new ArrayList<>();
-                                for (int j = 0; j < observations.length(); j++) {
-                                    strings.add(observations.getString(j));
-                                }
-                                schedule.setObservations(strings);
-                            } else {
-                                schedule.setObservations(new ArrayList<String>());
-                            }
-                            schedules.add(schedule);
-                        }
-                        itemSchedule.setSchedules(schedules);
-                        itemSchedules.add(itemSchedule);
-                    }
-
+                    requestSchedule(jsonObjectRoot);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -204,6 +180,37 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                 Log.e(TAG, "onFailed: " + reason);
             }
         }).execute();
+    }
+
+    private void requestSchedule(JSONObject jsonObjectRoot) throws JSONException {
+        JSONObject jsonObject = jsonObjectRoot.getJSONObject("schedules");
+        Iterator<String> keys = jsonObject.keys();
+        while (keys.hasNext()) {
+            String next = keys.next();
+            ItemSchedule itemSchedule = new ItemSchedule();
+            itemSchedule.setDate(next);
+            ArrayList<Schedule> schedules = new ArrayList<>();
+            JSONArray jsonArray = jsonObject.getJSONArray(next);
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject objectSchedule = jsonArray.getJSONObject(i);
+                Schedule schedule = new Schedule();
+                schedule.setIn(objectSchedule.getString("in"));
+                schedule.setOut(objectSchedule.getString("out"));
+                if (!objectSchedule.isNull("observations")) {
+                    JSONArray observations = objectSchedule.getJSONArray("observations");
+                    ArrayList<String> strings = new ArrayList<>();
+                    for (int j = 0; j < observations.length(); j++) {
+                        strings.add(observations.getString(j));
+                    }
+                    schedule.setObservations(strings);
+                } else {
+                    schedule.setObservations(new ArrayList<String>());
+                }
+                schedules.add(schedule);
+            }
+            itemSchedule.setSchedules(schedules);
+            itemSchedules.add(itemSchedule);
+        }
     }
 
     private void checkProviderEnabled() {
@@ -362,7 +369,6 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
     }
 
     private void sendLocationIn(Location currentLocation) {
-        String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjIsImlzcyI6Imh0dHA6XC9cL2VuZGUyLnNvbHVuZXMuY29tXC9hcGktYXV0aFwvYXV0aGVudGljYXRlIiwiaWF0IjoxNDc5MzM2MjY2LCJleHAiOjE1MTA4NzIyNjYsIm5iZiI6MTQ3OTMzNjI2NiwianRpIjoiMDkyODE5ZTAxMjQyYjlhNWJkMWIwN2ZjMmViYmI0MWEifQ.h3GuzlopnYQmnArIK5DlD4AYWSxKK2A0W1D-vsxNznI";
         String url = "http://asistencia.solunes.com/api/check-location/1/in/" + currentLocation.getLatitude() + "/" + currentLocation.getLongitude() + "/" + currentLocation.getAccuracy() + "/" + methodLocation();
         new GetRequest(token, url, new CallbackAPI() {
             @Override
@@ -397,7 +403,6 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
     }
 
     private void sendLocationCheck(Location currentLocation) {
-        String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjIsImlzcyI6Imh0dHA6XC9cL2VuZGUyLnNvbHVuZXMuY29tXC9hcGktYXV0aFwvYXV0aGVudGljYXRlIiwiaWF0IjoxNDc5MzM2MjY2LCJleHAiOjE1MTA4NzIyNjYsIm5iZiI6MTQ3OTMzNjI2NiwianRpIjoiMDkyODE5ZTAxMjQyYjlhNWJkMWIwN2ZjMmViYmI0MWEifQ.h3GuzlopnYQmnArIK5DlD4AYWSxKK2A0W1D-vsxNznI";
         String url = "http://asistencia.solunes.com/api/check-location/1/check/" + currentLocation.getLatitude() + "/" + currentLocation.getLongitude() + "/" + currentLocation.getAccuracy() + "/" + methodLocation();
         new GetRequest(token, url, new CallbackAPI() {
             @Override
@@ -425,7 +430,6 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
 
     private void sendLocationOut(Location locationOut) {
         locationService.removeListener();
-        String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjIsImlzcyI6Imh0dHA6XC9cL2VuZGUyLnNvbHVuZXMuY29tXC9hcGktYXV0aFwvYXV0aGVudGljYXRlIiwiaWF0IjoxNDc5MzM2MjY2LCJleHAiOjE1MTA4NzIyNjYsIm5iZiI6MTQ3OTMzNjI2NiwianRpIjoiMDkyODE5ZTAxMjQyYjlhNWJkMWIwN2ZjMmViYmI0MWEifQ.h3GuzlopnYQmnArIK5DlD4AYWSxKK2A0W1D-vsxNznI";
         String url = "http://asistencia.solunes.com/api/check-location/1/out/" + locationOut.getLatitude() + "/" + locationOut.getLongitude() + "/" + locationOut.getAccuracy() + "/" + methodLocation();
         new GetRequest(token, url, new CallbackAPI() {
             @Override
