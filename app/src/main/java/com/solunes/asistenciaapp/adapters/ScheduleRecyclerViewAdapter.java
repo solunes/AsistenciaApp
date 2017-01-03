@@ -30,21 +30,18 @@ public class ScheduleRecyclerViewAdapter extends RecyclerView.Adapter<ScheduleRe
     public ScheduleRecyclerViewAdapter(Context context, ArrayList<ItemSchedule> items) {
         this.context = context;
         itemSchedules = items;
-        Log.e(TAG, "ScheduleRecyclerViewAdapter: "+ itemSchedules.size() );
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_schedule, parent, false);
-        Log.e(TAG, "onCreateViewHolder: ");
         return new ViewHolder(view);
     }
 
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        Log.e(TAG, "onBindViewHolder: " + position);
         ItemSchedule itemSchedule = itemSchedules.get(position);
         Date date = StringUtils.formateStringFromDate(StringUtils.DATE_FORMAT, itemSchedule.getDate());
         String fromstring = StringUtils.formateDateFromstring(StringUtils.HUMAN_DATE_FORMAT, date);

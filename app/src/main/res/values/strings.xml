@@ -11,4 +11,5 @@
 
     <string name="button_text_in">Ingresar</string>
     <string name="button_text_out">Salir</string>
+    <string name="menu_method">Metodos</string>
 </resources>

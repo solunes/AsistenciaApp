@@ -7,6 +7,10 @@
         android:id="@+id/action_notifications"
         android:title="@string/menu_notifications"/>
     <item
+        android:id="@+id/action_method"
+        android:checkable="true"
+        android:title="@string/menu_method"/>
+    <item
         android:id="@+id/action_logout"
         android:title="@string/menu_logout"/>
 </menu>

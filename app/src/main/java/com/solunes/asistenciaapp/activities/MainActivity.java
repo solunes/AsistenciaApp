@@ -10,6 +10,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -17,6 +18,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
@@ -30,6 +32,18 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResult;
+import com.google.android.gms.location.LocationSettingsStates;
+import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.solunes.asistenciaapp.ItemSchedule;
 import com.solunes.asistenciaapp.R;
 import com.solunes.asistenciaapp.Schedule;
@@ -61,6 +75,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
 
     private static final String KEY_INSIDE = "inside";
     private boolean inside;
+    private boolean selectMethod;
     private Timer timer;
 
     @Override
@@ -124,6 +139,10 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
             case R.id.action_notifications:
                 startActivity(new Intent(MainActivity.this, NotificationActivity.class));
                 return true;
+            case R.id.action_method:
+                locationService.stopRequest(selectMethod);
+                selectMethod = item.isChecked();
+                return true;
             case R.id.action_logout:
                 UserPreferences.putBoolean(this, LoginActivity.KEY_LOGIN, false);
 
@@ -136,7 +155,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
 
     private void requestData() {
         String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjIsImlzcyI6Imh0dHA6XC9cL2VuZGUyLnNvbHVuZXMuY29tXC9hcGktYXV0aFwvYXV0aGVudGljYXRlIiwiaWF0IjoxNDc5MzM2MjY2LCJleHAiOjE1MTA4NzIyNjYsIm5iZiI6MTQ3OTMzNjI2NiwianRpIjoiMDkyODE5ZTAxMjQyYjlhNWJkMWIwN2ZjMmViYmI0MWEifQ.h3GuzlopnYQmnArIK5DlD4AYWSxKK2A0W1D-vsxNznI";
-        new GetRequest(token, "http://asistencia.solunes.com/api/check-location/1/check/-16.489689/68.119294", new CallbackAPI() {
+        new GetRequest(token, "http://asistencia.solunes.com/api/check-location/1/check/-16.489689/68.119294/0.0/" + methodLocation(), new CallbackAPI() {
             @Override
             public void onSuccess(String result, int statusCode) {
                 try {
@@ -245,10 +264,10 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         if (inside) {
-                            Location locationOut = locationService.getLocationOut();
+                            Location locationOut = locationService.getLocationOut(selectMethod);
                             sendLocationOut(locationOut);
                         } else {
-                            if (locationService.getCurrentLocationIn()) {
+                            if (locationService.getCurrentLocationIn(selectMethod)) {
                                 Snackbar.make(recyclerView, "obteniendo ubicación", Snackbar.LENGTH_SHORT).show();
                                 buttonAction.setVisibility(View.INVISIBLE);
                                 progressButton.setVisibility(View.VISIBLE);
@@ -265,7 +284,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                                         });
                                     }
                                     // TODO: 29-12-16 tiempo para el timer
-                                }, 1000 * 20);
+                                }, 1000 * 60 * 5);
                             } else {
                                 Snackbar.make(recyclerView, "vuelva a intentar", Snackbar.LENGTH_SHORT).show();
                             }
@@ -344,13 +363,14 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
 
     private void sendLocationIn(Location currentLocation) {
         String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjIsImlzcyI6Imh0dHA6XC9cL2VuZGUyLnNvbHVuZXMuY29tXC9hcGktYXV0aFwvYXV0aGVudGljYXRlIiwiaWF0IjoxNDc5MzM2MjY2LCJleHAiOjE1MTA4NzIyNjYsIm5iZiI6MTQ3OTMzNjI2NiwianRpIjoiMDkyODE5ZTAxMjQyYjlhNWJkMWIwN2ZjMmViYmI0MWEifQ.h3GuzlopnYQmnArIK5DlD4AYWSxKK2A0W1D-vsxNznI";
-        String url = "http://asistencia.solunes.com/api/check-location/1/in/" + currentLocation.getLatitude() + "/" + currentLocation.getLongitude() + "";
+        String url = "http://asistencia.solunes.com/api/check-location/1/in/" + currentLocation.getLatitude() + "/" + currentLocation.getLongitude() + "/" + currentLocation.getAccuracy() + "/" + methodLocation();
         new GetRequest(token, url, new CallbackAPI() {
             @Override
             public void onSuccess(String result, int statusCode) {
                 JSONObject jsonObjectRoot = null;
                 try {
                     jsonObjectRoot = new JSONObject(result);
+                    Log.e(TAG, "onSuccess: " + result);
                     boolean inLocation = jsonObjectRoot.getBoolean("in_location");
                     int distance = jsonObjectRoot.getInt("distance");
                     Log.e(TAG, "onSuccess: " + inLocation + " | " + distance);
@@ -359,9 +379,10 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                         UserPreferences.putBoolean(getApplicationContext(), KEY_INSIDE, true);
                         inside = true;
                         buttonAction.setText(R.string.button_text_out);
-                        buttonAction.setEnabled(true);
+                        buttonAction.setVisibility(View.VISIBLE);
+                        progressButton.setVisibility(View.INVISIBLE);
                         locationService.removeListener();
-                        locationService.getCurrentLocationCheck();
+                        locationService.getCurrentLocationCheck(selectMethod);
                     }
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -377,7 +398,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
 
     private void sendLocationCheck(Location currentLocation) {
         String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjIsImlzcyI6Imh0dHA6XC9cL2VuZGUyLnNvbHVuZXMuY29tXC9hcGktYXV0aFwvYXV0aGVudGljYXRlIiwiaWF0IjoxNDc5MzM2MjY2LCJleHAiOjE1MTA4NzIyNjYsIm5iZiI6MTQ3OTMzNjI2NiwianRpIjoiMDkyODE5ZTAxMjQyYjlhNWJkMWIwN2ZjMmViYmI0MWEifQ.h3GuzlopnYQmnArIK5DlD4AYWSxKK2A0W1D-vsxNznI";
-        String url = "http://asistencia.solunes.com/api/check-location/1/check/" + currentLocation.getLatitude() + "/" + currentLocation.getLongitude() + "";
+        String url = "http://asistencia.solunes.com/api/check-location/1/check/" + currentLocation.getLatitude() + "/" + currentLocation.getLongitude() + "/" + currentLocation.getAccuracy() + "/" + methodLocation();
         new GetRequest(token, url, new CallbackAPI() {
             @Override
             public void onSuccess(String result, int statusCode) {
@@ -405,7 +426,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
     private void sendLocationOut(Location locationOut) {
         locationService.removeListener();
         String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjIsImlzcyI6Imh0dHA6XC9cL2VuZGUyLnNvbHVuZXMuY29tXC9hcGktYXV0aFwvYXV0aGVudGljYXRlIiwiaWF0IjoxNDc5MzM2MjY2LCJleHAiOjE1MTA4NzIyNjYsIm5iZiI6MTQ3OTMzNjI2NiwianRpIjoiMDkyODE5ZTAxMjQyYjlhNWJkMWIwN2ZjMmViYmI0MWEifQ.h3GuzlopnYQmnArIK5DlD4AYWSxKK2A0W1D-vsxNznI";
-        String url = "http://asistencia.solunes.com/api/check-location/1/out/" + locationOut.getLatitude() + "/" + locationOut.getLongitude() + "";
+        String url = "http://asistencia.solunes.com/api/check-location/1/out/" + locationOut.getLatitude() + "/" + locationOut.getLongitude() + "/" + locationOut.getAccuracy() + "/" + methodLocation();
         new GetRequest(token, url, new CallbackAPI() {
             @Override
             public void onSuccess(String result, int statusCode) {
@@ -428,6 +449,14 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
 
             }
         }).execute();
+    }
+
+    private String methodLocation() {
+        if (selectMethod) {
+            return "google";
+        } else {
+            return "gps";
+        }
     }
 
     private void showNotfication() {
