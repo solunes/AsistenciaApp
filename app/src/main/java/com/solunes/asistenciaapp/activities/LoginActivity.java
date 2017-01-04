@@ -31,6 +31,7 @@ public class LoginActivity extends AppCompatActivity {
     private static final String TAG = "LoginActivity";
     public static final String KEY_LOGIN = "login";
     public static final String KEY_LOGIN_ID = "user_id";
+    public static final String KEY_SCHEDULES = "schedules";
 
     private EditText user;
     private EditText pass;
@@ -77,16 +78,10 @@ public class LoginActivity extends AppCompatActivity {
                 }
                 if (valid) {
                     // TODO: 21-12-16 consulta al API para obtener el usuario
-                    String token = UserPreferences.getString(getApplicationContext(), KEY_TOKEN);
-                    String expirationDate = UserPreferences.getString(getApplicationContext(), KEY_EXPIRATION_DATE);
                     User user = new User();
                     user.setUsername(LoginActivity.this.user.getText().toString());
                     user.setPassword(pass.getText().toString());
-                    Date date = null;
-                    if (expirationDate != null) {
-                        date = StringUtils.formateStringFromDate(StringUtils.DATE_FORMAT, expirationDate);
-                    }
-                    Token.getToken(token, date, user, new Token.CallbackToken() {
+                    Token.tokenRequest(user, new Token.CallbackToken() {
                         @Override
                         public void onToken(String token) {
                             Log.e(TAG, "onToken: " + token);
@@ -101,8 +96,11 @@ public class LoginActivity extends AppCompatActivity {
                                 jsonObject = new JSONObject(result);
                                 String token = jsonObject.getString("token");
                                 String expirationDate = jsonObject.getString("expirationDate");
+                                int userId = jsonObject.getInt("user_id");
                                 UserPreferences.putString(getApplicationContext(), KEY_TOKEN, token);
                                 UserPreferences.putString(getApplicationContext(), KEY_EXPIRATION_DATE, expirationDate);
+                                UserPreferences.putInt(getApplicationContext(), KEY_LOGIN_ID, userId);
+                                UserPreferences.putString(getApplicationContext(), KEY_SCHEDULES, jsonObject.getString("schedules"));
                             } catch (JSONException e) {
                                 e.printStackTrace();
                             }

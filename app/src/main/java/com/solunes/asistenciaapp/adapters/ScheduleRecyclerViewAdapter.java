@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -21,7 +22,7 @@ import java.util.Date;
  * Created by jhonlimaster on 21-12-16.
  */
 
-public class ScheduleRecyclerViewAdapter extends RecyclerView.Adapter<ScheduleRecyclerViewAdapter.ViewHolder> {
+public class ScheduleRecyclerViewAdapter extends SectionedRecyclerViewAdapter<RecyclerView.ViewHolder> {
 
     private static final String TAG = "ScheduleRecyclerViewAda";
     private Context context;
@@ -33,56 +34,99 @@ public class ScheduleRecyclerViewAdapter extends RecyclerView.Adapter<ScheduleRe
     }
 
     @Override
-    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_schedule, parent, false);
-        return new ViewHolder(view);
+    public int getItemViewType(int section, int relativePosition, int absolutePosition) {
+        Log.e(TAG, "getItemViewType: " + section + "|" + relativePosition + "|" + absolutePosition);
+        return super.getItemViewType(section, relativePosition, absolutePosition);
     }
 
+    @Override
+    public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        Log.e(TAG, "onCreateViewHolder: " + viewType);
+        int layout;
+        View view;
+        switch (viewType) {
+            case VIEW_TYPE_HEADER:
+                layout = R.layout.layout_header;
+                view = LayoutInflater.from(parent.getContext())
+                        .inflate(layout, parent, false);
+                return new ViewHolderHeader(view);
+            case VIEW_TYPE_ITEM:
+                layout = R.layout.layout_hours;
+                view = LayoutInflater.from(parent.getContext())
+                        .inflate(layout, parent, false);
+                return new ViewHolder(view);
+            default:
+//                layout = R.layout.item_schedule;
+                return null;
+        }
+    }
 
     @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
-        ItemSchedule itemSchedule = itemSchedules.get(position);
+    public void onBindHeaderViewHolder(RecyclerView.ViewHolder holder, int section) {
+        Log.e(TAG, "onBindHeaderViewHolder: " + section);
+        ViewHolderHeader holderHeader = (ViewHolderHeader) holder;
+        ItemSchedule itemSchedule = itemSchedules.get(section);
         Date date = StringUtils.formateStringFromDate(StringUtils.DATE_FORMAT, itemSchedule.getDate());
         String fromstring = StringUtils.formateDateFromstring(StringUtils.HUMAN_DATE_FORMAT, date);
-        holder.dayText.setText(fromstring);
-        holder.layoutSchedule.removeAllViews();
-        if (itemSchedule.getSchedules().size() == 0) {
-            holder.layoutSchedule.setVisibility(View.GONE);
+        holderHeader.dayText.setText(fromstring);
+    }
+
+    @Override
+    public void onBindViewHolder(RecyclerView.ViewHolder holder, int section, int relativePosition, int absolutePosition) {
+        ViewHolder viewHolder = (ViewHolder) holder;
+        ItemSchedule itemSchedule = itemSchedules.get(section);
+//        Date date = StringUtils.formateStringFromDate(StringUtils.DATE_FORMAT, itemSchedule.getDate());
+//        String fromstring = StringUtils.formateDateFromstring(StringUtils.HUMAN_DATE_FORMAT, date);
+//        holder.dayText.setText(fromstring);
+        viewHolder.textScheduleIn.setText(itemSchedule.getSchedules().get(relativePosition).getIn());
+        viewHolder.textScheduleOut.setText(itemSchedule.getSchedules().get(relativePosition).getOut());
+        String obs = null;
+        for (String textObs : itemSchedule.getSchedules().get(relativePosition).getObservations()) {
+            TextView textViewObs = (TextView) LayoutInflater.from(context).inflate(R.layout.obs_textview, null);
+            textViewObs.setText(textObs);
+            obs += textObs + "\n";
         }
-        for (Schedule schedule : itemSchedule.getSchedules()) {
-            View view = LayoutInflater.from(context).inflate(R.layout.layout_hours, null);
-            TextView textIn = (TextView) view.findViewById(R.id.text_schedule_in);
-            textIn.setText(schedule.getIn());
-            TextView textOut = (TextView) view.findViewById(R.id.text_schedule_out);
-            textOut.setText(schedule.getOut());
-            holder.layoutSchedule.addView(view);
-            for (String textObs : schedule.getObservations()) {
-                TextView textViewObs = (TextView) LayoutInflater.from(context).inflate(R.layout.obs_textview, null);
-                textViewObs.setText(textObs);
-                holder.layoutSchedule.addView(textViewObs);
-            }
+        if (obs != null) {
+            viewHolder.textObs.setVisibility(View.VISIBLE);
+            viewHolder.textObs.setText(obs);
         }
     }
 
     @Override
-    public int getItemCount() {
-        return itemSchedules.size();
+    public int getSectionCount() {
+        Log.e(TAG, "getSectionCount: " + itemSchedules.size());
+        return this.itemSchedules.size();
     }
 
-    class ViewHolder extends RecyclerView.ViewHolder {
+    @Override
+    public int getItemCount(int section) {
+        Log.e(TAG, "getItemCount: " + itemSchedules.get(section).getSchedules().size());
+        return itemSchedules.get(section).getSchedules().size();
+    }
+
+    private class ViewHolderHeader extends RecyclerView.ViewHolder {
         final TextView dayText;
-        final LinearLayout layoutSchedule;
+
+        ViewHolderHeader(View view) {
+            super(view);
+            dayText = (TextView) view.findViewById(R.id.day_text);
+        }
+    }
+
+    private class ViewHolder extends RecyclerView.ViewHolder {
+        final TextView textScheduleIn;
+        final ImageView iconScheduleIn;
+        final TextView textScheduleOut;
+        final ImageView iconScheduleOut;
+        final TextView textObs;
 
         ViewHolder(View view) {
             super(view);
-            dayText = (TextView) view.findViewById(R.id.day_text);
-            layoutSchedule = (LinearLayout) view.findViewById(R.id.item_schedule);
-        }
-
-        @Override
-        public String toString() {
-            return super.toString() + "'";
+            textScheduleIn = (TextView) view.findViewById(R.id.text_schedule_in);
+            iconScheduleIn = (ImageView) view.findViewById(R.id.icon_schedule_in);
+            textScheduleOut = (TextView) view.findViewById(R.id.text_schedule_out);
+            iconScheduleOut = (ImageView) view.findViewById(R.id.icon_schedule_out);
+            textObs = (TextView) view.findViewById(R.id.obs_text);
         }
     }
 }

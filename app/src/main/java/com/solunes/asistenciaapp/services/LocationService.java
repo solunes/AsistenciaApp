@@ -205,31 +205,15 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
             @Override
             public void onResult(@NonNull LocationSettingsResult locationSettingsResult) {
                 final Status status = locationSettingsResult.getStatus();
-                final LocationSettingsStates locationSettingsStates = locationSettingsResult.getLocationSettingsStates();
+//                final LocationSettingsStates locationSettingsStates = locationSettingsResult.getLocationSettingsStates();
                 switch (status.getStatusCode()) {
                     case LocationSettingsStatusCodes.SUCCESS:
-                        // All location settings are satisfied. The client can
-                        // initialize location requests here.
-                        startLocationUpdates();
                         break;
                     case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
-                        // Location settings are not satisfied, but this can be fixed
-                        // by showing the user a dialog.
-//                        try {
-                        // Show the dialog by calling startResolutionForResult(),
-                        // and check the result in onActivityResult().
                         Log.e(TAG, "onResult: RESOLUTION_REQUIRED");
-//                            status.startResolutionForResult(
-//                                    OuterClass.this,
-//                                    REQUEST_CHECK_SETTINGS);
-//                        } catch (IntentSender.SendIntentException e) {
-//                            // Ignore the error.
-//                        }
                         break;
                     case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
                         Log.e(TAG, "onResult: SETTINGS_CHANGE_UNAVAILABLE");
-                        // Location settings are not satisfied. However, we have no way
-                        // to fix the settings so we won't show the dialog.
                         break;
                 }
             }

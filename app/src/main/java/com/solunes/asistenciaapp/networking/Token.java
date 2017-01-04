@@ -42,14 +42,13 @@ public class Token {
      * @param user          usuario para mandar sus credenciales
      * @param callbackToken interface para responder en los casos de exito y fracaso
      */
-    private static void tokenRequest(AbstractUser user, final CallbackToken callbackToken) {
+    public static void tokenRequest(AbstractUser user, final CallbackToken callbackToken) {
         Hashtable<String, String> params = new Hashtable<>();
         params.put("email", user.getUsername());
         params.put("password", user.getPassword());
         new PostRequest(null, params, null, "http://asistencia.solunes.com/api-auth/authenticate", new CallbackAPI() {
             @Override
             public void onSuccess(String result, int statusCode) {
-                Log.e(TAG, "onSuccess: token " + result);
                 callbackToken.onSuccessToken(result);
             }
 

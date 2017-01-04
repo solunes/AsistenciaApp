@@ -89,12 +89,16 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
         itemSchedules = new ArrayList<>();
         checkProviderEnabled();
 
-        requestData();
 
         recyclerView.setAdapter(new ScheduleRecyclerViewAdapter(this, itemSchedules));
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setHasFixedSize(true);
 
+        try {
+            requestSchedule(UserPreferences.getString(this, LoginActivity.KEY_SCHEDULES));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
         token = UserPreferences.getString(this, Token.KEY_TOKEN);
         inside = UserPreferences.getBoolean(this, KEY_INSIDE);
         progressButton = findViewById(R.id.progress_button);
@@ -158,32 +162,8 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
         return super.onOptionsItemSelected(item);
     }
 
-    private void requestData() {
-        new GetRequest(token, "http://asistencia.solunes.com/api/check-location/1/check/-16.489689/68.119294/0.0/" + methodLocation(), new CallbackAPI() {
-            @Override
-            public void onSuccess(String result, int statusCode) {
-                try {
-                    JSONObject jsonObjectRoot = new JSONObject(result);
-                    JSONObject jsonObjectActualSchedule = jsonObjectRoot.getJSONObject("actual_schedule");
-                    String in = jsonObjectActualSchedule.getString("in");
-                    String out = jsonObjectActualSchedule.getString("out");
-                    actualSchedule = in + " - " + out;
-                    requestSchedule(jsonObjectRoot);
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-                recyclerView.setAdapter(new ScheduleRecyclerViewAdapter(getApplicationContext(), itemSchedules));
-            }
-
-            @Override
-            public void onFailed(String reason, int statusCode) {
-                Log.e(TAG, "onFailed: " + reason);
-            }
-        }).execute();
-    }
-
-    private void requestSchedule(JSONObject jsonObjectRoot) throws JSONException {
-        JSONObject jsonObject = jsonObjectRoot.getJSONObject("schedules");
+    private void requestSchedule(String scheduleString) throws JSONException {
+        JSONObject jsonObject = new JSONObject(scheduleString);
         Iterator<String> keys = jsonObject.keys();
         while (keys.hasNext()) {
             String next = keys.next();
@@ -211,6 +191,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
             itemSchedule.setSchedules(schedules);
             itemSchedules.add(itemSchedule);
         }
+        recyclerView.setAdapter(new ScheduleRecyclerViewAdapter(getApplicationContext(), itemSchedules));
     }
 
     private void checkProviderEnabled() {
