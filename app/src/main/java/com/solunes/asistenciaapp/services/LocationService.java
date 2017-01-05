@@ -99,7 +99,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 
     @Override
     public void onLocationChanged(Location location) {
-        Log.e(TAG, "onLocationChanged: " + location.getLatitude() + " | " + location.getLongitude() + " | " + location.getAccuracy());
+        serviceCallBack.getCurrentLocation(actionId, location);
     }
 
 
@@ -132,9 +132,12 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         }
     }
 
+    private int actionId;
+
     public boolean getCurrentLocationIn(boolean method) {
         if (method) {
             stopLocationUpdates();
+            actionId = ACTION_IN;
             return startLocationUpdates();
         } else {
             removeListener();
@@ -146,11 +149,12 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     public boolean getCurrentLocationCheck(boolean method) {
         if (method) {
             stopLocationUpdates();
+            actionId = ACTION_CHECK;
             return startLocationUpdates();
         } else {
             removeListener();
             locationListener = new AsistenciaLocationListener(ACTION_CHECK);
-            return getCurrentLocation(10000);
+            return getCurrentLocation(1000 * 60);
         }
     }
 
@@ -166,8 +170,8 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         }
     }
 
-    public void stopRequest(boolean method){
-        if (method){
+    public void stopRequest(boolean method) {
+        if (method) {
             stopLocationUpdates();
         } else {
             removeListener();
@@ -193,8 +197,8 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 
     protected void createLocationRequest() {
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(1000);
-        mLocationRequest.setFastestInterval(2000);
+        mLocationRequest.setInterval(1000 * 30);
+        mLocationRequest.setFastestInterval(1000 * 60);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
                 .addLocationRequest(mLocationRequest);

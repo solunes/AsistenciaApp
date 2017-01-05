@@ -78,7 +78,6 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
     private static final String KEY_INSIDE = "inside";
     private boolean inside;
     private boolean selectMethod;
-    private Timer timer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,7 +85,6 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
         setContentView(R.layout.activity_main);
         setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
         recyclerView = (RecyclerView) findViewById(R.id.list);
-        itemSchedules = new ArrayList<>();
         checkProviderEnabled();
 
 
@@ -95,6 +93,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
         recyclerView.setHasFixedSize(true);
 
         try {
+            JSONObject jsonObject = new JSONObject("{}");
             requestSchedule(UserPreferences.getString(this, LoginActivity.KEY_SCHEDULES));
         } catch (JSONException e) {
             e.printStackTrace();
@@ -120,7 +119,6 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
             }
         });
         startService();
-        timer = new Timer();
     }
 
     private void startService() {
@@ -165,6 +163,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
     private void requestSchedule(String scheduleString) throws JSONException {
         JSONObject jsonObject = new JSONObject(scheduleString);
         Iterator<String> keys = jsonObject.keys();
+        itemSchedules = new ArrayList<>();
         while (keys.hasNext()) {
             String next = keys.next();
             ItemSchedule itemSchedule = new ItemSchedule();
@@ -176,6 +175,8 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                 Schedule schedule = new Schedule();
                 schedule.setIn(objectSchedule.getString("in"));
                 schedule.setOut(objectSchedule.getString("out"));
+                schedule.setStatusIn(getStatus(objectSchedule.getString("in_status")));
+                schedule.setStatusOut(getStatus(objectSchedule.getString("out_status")));
                 if (!objectSchedule.isNull("observations")) {
                     JSONArray observations = objectSchedule.getJSONArray("observations");
                     ArrayList<String> strings = new ArrayList<>();
@@ -191,7 +192,22 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
             itemSchedule.setSchedules(schedules);
             itemSchedules.add(itemSchedule);
         }
-        recyclerView.setAdapter(new ScheduleRecyclerViewAdapter(getApplicationContext(), itemSchedules));
+        if (itemSchedules.size() > 0) {
+            recyclerView.setAdapter(new ScheduleRecyclerViewAdapter(getApplicationContext(), itemSchedules));
+        }
+    }
+
+    private Schedule.Status getStatus(String status) {
+        switch (status) {
+            case "check":
+                return Schedule.Status.check;
+            case "holding":
+                return Schedule.Status.holding;
+            case "pending":
+                return Schedule.Status.pending;
+            default:
+                return null;
+        }
     }
 
     private void checkProviderEnabled() {
@@ -255,24 +271,13 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                             Location locationOut = locationService.getLocationOut(selectMethod);
                             sendLocationOut(locationOut);
                         } else {
+                            Location locationOut = locationService.getLocationOut(selectMethod);
+                            sendLocationOut(locationOut);
+
                             if (locationService.getCurrentLocationIn(selectMethod)) {
                                 Snackbar.make(recyclerView, "obteniendo ubicación", Snackbar.LENGTH_SHORT).show();
                                 buttonAction.setVisibility(View.INVISIBLE);
                                 progressButton.setVisibility(View.VISIBLE);
-                                timer.schedule(new TimerTask() {
-                                    @Override
-                                    public void run() {
-                                        locationService.removeListener();
-                                        runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                buttonAction.setVisibility(View.VISIBLE);
-                                                progressButton.setVisibility(View.GONE);
-                                            }
-                                        });
-                                    }
-                                    // TODO: 29-12-16 tiempo para el timer
-                                }, 1000 * 60 * 5);
                             } else {
                                 Snackbar.make(recyclerView, "vuelva a intentar", Snackbar.LENGTH_SHORT).show();
                             }
@@ -361,16 +366,16 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                     boolean inLocation = jsonObjectRoot.getBoolean("in_location");
                     int distance = jsonObjectRoot.getInt("distance");
                     Log.e(TAG, "onSuccess: " + inLocation + " | " + distance);
+                    requestSchedule(jsonObjectRoot.getString("schedules"));
                     if (inLocation) {
-                        timer.cancel();
                         UserPreferences.putBoolean(getApplicationContext(), KEY_INSIDE, true);
                         inside = true;
                         buttonAction.setText(R.string.button_text_out);
-                        buttonAction.setVisibility(View.VISIBLE);
-                        progressButton.setVisibility(View.INVISIBLE);
-                        locationService.removeListener();
                         locationService.getCurrentLocationCheck(selectMethod);
                     }
+                    buttonAction.setVisibility(View.VISIBLE);
+                    progressButton.setVisibility(View.INVISIBLE);
+                    locationService.removeListener();
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -388,14 +393,14 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
         new GetRequest(token, url, new CallbackAPI() {
             @Override
             public void onSuccess(String result, int statusCode) {
-                JSONObject jsonObjectRoot = null;
+                JSONObject jsonObjectRoot;
                 try {
                     jsonObjectRoot = new JSONObject(result);
 
                     boolean inLocation = jsonObjectRoot.getBoolean("in_location");
                     int distance = jsonObjectRoot.getInt("distance");
                     Log.e(TAG, "onSuccess: " + inLocation + " | " + distance);
-
+                    requestSchedule(jsonObjectRoot.getString("schedules"));
                     // TODO: 29-12-16 guardar datos en la base de datos para pruebas
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -421,6 +426,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                     boolean inLocation = jsonObjectRoot.getBoolean("in_location");
                     int distance = jsonObjectRoot.getInt("distance");
                     Log.e(TAG, "onSuccess: " + inLocation + " | " + distance);
+                    requestSchedule(jsonObjectRoot.getString("schedules"));
                     buttonAction.setText(R.string.button_text_in);
                     UserPreferences.putBoolean(getApplicationContext(), KEY_INSIDE, false);
                     inside = false;
@@ -458,11 +464,15 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                 .setContentText(actualSchedule)
                 .build();
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.notify(Notification.FLAG_ONGOING_EVENT, notification);
+        if (inside) {
+            notificationManager.notify(Notification.FLAG_ONGOING_EVENT, notification);
+        }
     }
 
     private void cancelNotification() {
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.cancel(Notification.FLAG_ONGOING_EVENT);
+        if (inside) {
+            NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager.cancel(Notification.FLAG_ONGOING_EVENT);
+        }
     }
 }

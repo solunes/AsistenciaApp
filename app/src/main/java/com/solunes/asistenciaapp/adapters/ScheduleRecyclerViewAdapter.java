@@ -35,13 +35,11 @@ public class ScheduleRecyclerViewAdapter extends SectionedRecyclerViewAdapter<Re
 
     @Override
     public int getItemViewType(int section, int relativePosition, int absolutePosition) {
-        Log.e(TAG, "getItemViewType: " + section + "|" + relativePosition + "|" + absolutePosition);
         return super.getItemViewType(section, relativePosition, absolutePosition);
     }
 
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        Log.e(TAG, "onCreateViewHolder: " + viewType);
         int layout;
         View view;
         switch (viewType) {
@@ -63,7 +61,6 @@ public class ScheduleRecyclerViewAdapter extends SectionedRecyclerViewAdapter<Re
 
     @Override
     public void onBindHeaderViewHolder(RecyclerView.ViewHolder holder, int section) {
-        Log.e(TAG, "onBindHeaderViewHolder: " + section);
         ViewHolderHeader holderHeader = (ViewHolderHeader) holder;
         ItemSchedule itemSchedule = itemSchedules.get(section);
         Date date = StringUtils.formateStringFromDate(StringUtils.DATE_FORMAT, itemSchedule.getDate());
@@ -75,18 +72,15 @@ public class ScheduleRecyclerViewAdapter extends SectionedRecyclerViewAdapter<Re
     public void onBindViewHolder(RecyclerView.ViewHolder holder, int section, int relativePosition, int absolutePosition) {
         ViewHolder viewHolder = (ViewHolder) holder;
         ItemSchedule itemSchedule = itemSchedules.get(section);
-//        Date date = StringUtils.formateStringFromDate(StringUtils.DATE_FORMAT, itemSchedule.getDate());
-//        String fromstring = StringUtils.formateDateFromstring(StringUtils.HUMAN_DATE_FORMAT, date);
-//        holder.dayText.setText(fromstring);
-        viewHolder.textScheduleIn.setText(itemSchedule.getSchedules().get(relativePosition).getIn());
-        viewHolder.textScheduleOut.setText(itemSchedule.getSchedules().get(relativePosition).getOut());
-        String obs = null;
-        for (String textObs : itemSchedule.getSchedules().get(relativePosition).getObservations()) {
-            TextView textViewObs = (TextView) LayoutInflater.from(context).inflate(R.layout.obs_textview, null);
-            textViewObs.setText(textObs);
+        Schedule schedule = itemSchedule.getSchedules().get(relativePosition);
+        viewHolder.textScheduleIn.setText(schedule.getIn());
+        viewHolder.textScheduleOut.setText(schedule.getOut());
+        schedule.getStatusIn().name();
+        String obs = "";
+        for (String textObs : schedule.getObservations()) {
             obs += textObs + "\n";
         }
-        if (obs != null) {
+        if (obs.length() > 0) {
             viewHolder.textObs.setVisibility(View.VISIBLE);
             viewHolder.textObs.setText(obs);
         }
@@ -94,13 +88,11 @@ public class ScheduleRecyclerViewAdapter extends SectionedRecyclerViewAdapter<Re
 
     @Override
     public int getSectionCount() {
-        Log.e(TAG, "getSectionCount: " + itemSchedules.size());
         return this.itemSchedules.size();
     }
 
     @Override
     public int getItemCount(int section) {
-        Log.e(TAG, "getItemCount: " + itemSchedules.get(section).getSchedules().size());
         return itemSchedules.get(section).getSchedules().size();
     }
 
