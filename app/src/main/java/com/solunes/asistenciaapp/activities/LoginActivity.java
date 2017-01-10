@@ -77,7 +77,6 @@ public class LoginActivity extends AppCompatActivity {
                     inputLayoutPass.setError(null);
                 }
                 if (valid) {
-                    // TODO: 21-12-16 consulta al API para obtener el usuario
                     User user = new User();
                     user.setUsername(LoginActivity.this.user.getText().toString());
                     user.setPassword(pass.getText().toString());

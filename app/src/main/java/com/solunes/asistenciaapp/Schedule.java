@@ -10,26 +10,26 @@ public class Schedule {
     private String in;
     private String out;
     private ArrayList<String> observations;
-    private Status statusIn;
-    private Status statusOut;
+    private String statusIn;
+    private String statusOut;
 
     public enum Status {
         pending, check, holding
     }
 
-    public Status getStatusIn() {
+    public String getStatusIn() {
         return statusIn;
     }
 
-    public void setStatusIn(Status statusIn) {
+    public void setStatusIn(String statusIn) {
         this.statusIn = statusIn;
     }
 
-    public Status getStatusOut() {
+    public String getStatusOut() {
         return statusOut;
     }
 
-    public void setStatusOut(Status statusOut) {
+    public void setStatusOut(String statusOut) {
         this.statusOut = statusOut;
     }
 

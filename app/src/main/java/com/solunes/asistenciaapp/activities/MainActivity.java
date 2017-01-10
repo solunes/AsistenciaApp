@@ -65,17 +65,19 @@ import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity implements LocationService.LocationServiceCallBack {
     private static final String TAG = "MainActivity";
+    private static final String KEY_INSIDE = "inside";
+
     private RecyclerView recyclerView;
     private ArrayList<ItemSchedule> itemSchedules;
     private LocationService locationService;
     private Intent intentService;
     private String actualSchedule;
     private String token;
+    private int userId;
 
     private Button buttonAction;
     private View progressButton;
 
-    private static final String KEY_INSIDE = "inside";
     private boolean inside;
     private boolean selectMethod;
 
@@ -85,23 +87,20 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
         setContentView(R.layout.activity_main);
         setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
         recyclerView = (RecyclerView) findViewById(R.id.list);
-        checkProviderEnabled();
-
-
-        recyclerView.setAdapter(new ScheduleRecyclerViewAdapter(this, itemSchedules));
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setHasFixedSize(true);
+        checkProviderEnabled();
 
-        try {
-            JSONObject jsonObject = new JSONObject("{}");
-            requestSchedule(UserPreferences.getString(this, LoginActivity.KEY_SCHEDULES));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+        userId = UserPreferences.getInt(this, LoginActivity.KEY_LOGIN_ID);
         token = UserPreferences.getString(this, Token.KEY_TOKEN);
         inside = UserPreferences.getBoolean(this, KEY_INSIDE);
         progressButton = findViewById(R.id.progress_button);
         buttonAction = (Button) findViewById(R.id.button_action);
+        try {
+            requestSchedule(UserPreferences.getString(this, "schedules"));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
         if (inside) {
             buttonAction.setText(R.string.button_text_out);
         } else {
@@ -152,7 +151,6 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                 return true;
             case R.id.action_logout:
                 UserPreferences.putBoolean(this, LoginActivity.KEY_LOGIN, false);
-
                 finish();
                 startActivity(new Intent(MainActivity.this, LoginActivity.class));
                 return true;
@@ -197,14 +195,14 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
         }
     }
 
-    private Schedule.Status getStatus(String status) {
+    private String getStatus(String status) {
         switch (status) {
             case "check":
-                return Schedule.Status.check;
+                return Schedule.Status.check.name();
             case "holding":
-                return Schedule.Status.holding;
+                return Schedule.Status.holding.name();
             case "pending":
-                return Schedule.Status.pending;
+                return Schedule.Status.pending.name();
             default:
                 return null;
         }
@@ -271,9 +269,6 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                             Location locationOut = locationService.getLocationOut(selectMethod);
                             sendLocationOut(locationOut);
                         } else {
-                            Location locationOut = locationService.getLocationOut(selectMethod);
-                            sendLocationOut(locationOut);
-
                             if (locationService.getCurrentLocationIn(selectMethod)) {
                                 Snackbar.make(recyclerView, "obteniendo ubicación", Snackbar.LENGTH_SHORT).show();
                                 buttonAction.setVisibility(View.INVISIBLE);
@@ -337,7 +332,6 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
 
     @Override
     public void getCurrentLocation(int actionId, Location currentLocation) {
-        // TODO: 29-12-16 validar para action in
         switch (actionId) {
             case LocationService.ACTION_IN:
                 sendLocationIn(currentLocation);
@@ -355,7 +349,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
     }
 
     private void sendLocationIn(Location currentLocation) {
-        String url = "http://asistencia.solunes.com/api/check-location/1/in/" + currentLocation.getLatitude() + "/" + currentLocation.getLongitude() + "/" + currentLocation.getAccuracy() + "/" + methodLocation();
+        String url = "http://asistencia.solunes.com/api/check-location/" + userId + "/in/" + currentLocation.getLatitude() + "/" + currentLocation.getLongitude() + "/" + currentLocation.getAccuracy() + "/" + methodLocation();
         new GetRequest(token, url, new CallbackAPI() {
             @Override
             public void onSuccess(String result, int statusCode) {
@@ -365,7 +359,9 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                     Log.e(TAG, "onSuccess: " + result);
                     boolean inLocation = jsonObjectRoot.getBoolean("in_location");
                     int distance = jsonObjectRoot.getInt("distance");
+                    actualSchedule = getActualSchedule(jsonObjectRoot.getString("actual_schedule"));
                     Log.e(TAG, "onSuccess: " + inLocation + " | " + distance);
+                    UserPreferences.putString(MainActivity.this, LoginActivity.KEY_SCHEDULES, jsonObjectRoot.getString("schedules"));
                     requestSchedule(jsonObjectRoot.getString("schedules"));
                     if (inLocation) {
                         UserPreferences.putBoolean(getApplicationContext(), KEY_INSIDE, true);
@@ -389,7 +385,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
     }
 
     private void sendLocationCheck(Location currentLocation) {
-        String url = "http://asistencia.solunes.com/api/check-location/1/check/" + currentLocation.getLatitude() + "/" + currentLocation.getLongitude() + "/" + currentLocation.getAccuracy() + "/" + methodLocation();
+        String url = "http://asistencia.solunes.com/api/check-location/" + userId + "/check/" + currentLocation.getLatitude() + "/" + currentLocation.getLongitude() + "/" + currentLocation.getAccuracy() + "/" + methodLocation();
         new GetRequest(token, url, new CallbackAPI() {
             @Override
             public void onSuccess(String result, int statusCode) {
@@ -399,9 +395,11 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
 
                     boolean inLocation = jsonObjectRoot.getBoolean("in_location");
                     int distance = jsonObjectRoot.getInt("distance");
+                    actualSchedule = getActualSchedule(jsonObjectRoot.getString("actual_schedule"));
                     Log.e(TAG, "onSuccess: " + inLocation + " | " + distance);
+                    // TODO: 09-01-17 validar que haya schedule
+                    UserPreferences.putString(MainActivity.this, LoginActivity.KEY_SCHEDULES, jsonObjectRoot.getString("schedules"));
                     requestSchedule(jsonObjectRoot.getString("schedules"));
-                    // TODO: 29-12-16 guardar datos en la base de datos para pruebas
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -416,7 +414,7 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
 
     private void sendLocationOut(Location locationOut) {
         locationService.removeListener();
-        String url = "http://asistencia.solunes.com/api/check-location/1/out/" + locationOut.getLatitude() + "/" + locationOut.getLongitude() + "/" + locationOut.getAccuracy() + "/" + methodLocation();
+        String url = "http://asistencia.solunes.com/api/check-location/" + userId + "/out/" + locationOut.getLatitude() + "/" + locationOut.getLongitude() + "/" + locationOut.getAccuracy() + "/" + methodLocation();
         new GetRequest(token, url, new CallbackAPI() {
             @Override
             public void onSuccess(String result, int statusCode) {
@@ -425,7 +423,9 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
                     jsonObjectRoot = new JSONObject(result);
                     boolean inLocation = jsonObjectRoot.getBoolean("in_location");
                     int distance = jsonObjectRoot.getInt("distance");
+                    actualSchedule = getActualSchedule(jsonObjectRoot.getString("actual_schedule"));
                     Log.e(TAG, "onSuccess: " + inLocation + " | " + distance);
+                    UserPreferences.putString(MainActivity.this, LoginActivity.KEY_SCHEDULES, jsonObjectRoot.getString("schedules"));
                     requestSchedule(jsonObjectRoot.getString("schedules"));
                     buttonAction.setText(R.string.button_text_in);
                     UserPreferences.putBoolean(getApplicationContext(), KEY_INSIDE, false);
@@ -448,6 +448,11 @@ public class MainActivity extends AppCompatActivity implements LocationService.L
         } else {
             return "gps";
         }
+    }
+
+    private String getActualSchedule(String json) throws JSONException {
+        JSONObject jsonObject = new JSONObject(json);
+        return jsonObject.getString("in") + " - " + jsonObject.getString("out");
     }
 
     private void showNotfication() {

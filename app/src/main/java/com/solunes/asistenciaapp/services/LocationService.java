@@ -43,8 +43,6 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     public static final int ACTION_IN = 0;
     public static final int ACTION_CHECK = 1;
     public static final int ACTION_OUT = 2;
-    private static final int MIN_DISTANCE = 1;
-    private static final int MIN_TIME = (1000 * 5);
 
     private LocationServiceCallBack serviceCallBack;
     private final IBinder mBinder = new LocalBinder();
@@ -164,8 +162,10 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
             return null;
         }
         if (method) {
+            stopLocationUpdates();
             return LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
         } else {
+            removeListener();
             return locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
         }
     }

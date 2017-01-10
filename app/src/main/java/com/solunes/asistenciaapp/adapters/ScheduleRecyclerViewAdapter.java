@@ -1,6 +1,7 @@
 package com.solunes.asistenciaapp.adapters;
 
 import android.content.Context;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -72,17 +73,46 @@ public class ScheduleRecyclerViewAdapter extends SectionedRecyclerViewAdapter<Re
     public void onBindViewHolder(RecyclerView.ViewHolder holder, int section, int relativePosition, int absolutePosition) {
         ViewHolder viewHolder = (ViewHolder) holder;
         ItemSchedule itemSchedule = itemSchedules.get(section);
-        Schedule schedule = itemSchedule.getSchedules().get(relativePosition);
+        final Schedule schedule = itemSchedule.getSchedules().get(relativePosition);
         viewHolder.textScheduleIn.setText(schedule.getIn());
         viewHolder.textScheduleOut.setText(schedule.getOut());
-        schedule.getStatusIn().name();
+        viewHolder.iconScheduleIn.setImageResource(setStatusIcon(schedule.getStatusIn()));
+        viewHolder.iconScheduleOut.setImageResource(setStatusIcon(schedule.getStatusOut()));
+        viewHolder.iconScheduleIn.setColorFilter(ContextCompat.getColor(context, setStatusBackground(schedule.getStatusIn())));
+        viewHolder.iconScheduleOut.setColorFilter(ContextCompat.getColor(context, setStatusBackground(schedule.getStatusOut())));
         String obs = "";
+//        String obs = "S: " + section + " RP: " + relativePosition + " AP: " + absolutePosition;
+
         for (String textObs : schedule.getObservations()) {
             obs += textObs + "\n";
+        viewHolder.textObs.setVisibility(View.VISIBLE);
         }
-        if (obs.length() > 0) {
-            viewHolder.textObs.setVisibility(View.VISIBLE);
-            viewHolder.textObs.setText(obs);
+        viewHolder.textObs.setText(obs.trim());
+    }
+
+    private int setStatusIcon(String status) {
+        switch (status) {
+            case "check":
+                return R.drawable.ic_check_black_24dp;
+            case "holding":
+                return R.drawable.ic_cancel_black_24dp;
+            case "pending":
+                return R.drawable.ic_cancel_black_24dp;
+            default:
+                return 0;
+        }
+    }
+
+    private int setStatusBackground(String status) {
+        switch (status) {
+            case "check":
+                return R.color.colorCheck;
+            case "holding":
+                return R.color.colorHolding;
+            case "pending":
+                return R.color.colorHolding;
+            default:
+                return 0;
         }
     }
 
