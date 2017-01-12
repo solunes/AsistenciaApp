@@ -11,6 +11,10 @@
         android:checkable="true"
         android:title="@string/menu_method"/>
     <item
+        android:id="@+id/action_last_location"
+        android:checkable="true"
+        android:title="@string/menu_last_location"/>
+    <item
         android:id="@+id/action_logout"
         android:title="@string/menu_logout"/>
 </menu>

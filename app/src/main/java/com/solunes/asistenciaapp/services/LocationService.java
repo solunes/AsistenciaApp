@@ -38,7 +38,7 @@ import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.solunes.asistenciaapp.R;
 import com.solunes.asistenciaapp.activities.MainActivity;
 
-public class LocationService extends Service implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
+public class LocationService extends Service implements com.google.android.gms.location.LocationListener {
     private static final String TAG = "LocationService";
     public static final int ACTION_IN = 0;
     public static final int ACTION_CHECK = 1;
@@ -46,26 +46,19 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 
     private LocationServiceCallBack serviceCallBack;
     private final IBinder mBinder = new LocalBinder();
-
-    private LocationManager locationManager;
     private AsistenciaLocationListener locationListener;
-    private Criteria criteria;
+
+    private boolean googleMethod;
+    private boolean lastLocation;
+
+    private NativeLocation nativeLocation;
+    private GoogleLocation googleLocation;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        if (locationManager == null) {
-            locationManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
-        }
-
-        criteria = new Criteria();
-        criteria.setAccuracy(Criteria.ACCURACY_FINE);
-        criteria.setAltitudeRequired(false);
-        criteria.setBearingRequired(false);
-        criteria.setCostAllowed(true);
-        criteria.setPowerRequirement(Criteria.POWER_HIGH);
-
-        googleLocationServices();
+        nativeLocation = new NativeLocation(getApplicationContext());
+        googleLocation = new GoogleLocation(getApplicationContext());
     }
 
     @Nullable
@@ -81,25 +74,9 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     }
 
     @Override
-    public void onConnected(@Nullable Bundle bundle) {
-
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
-    }
-
-    @Override
     public void onLocationChanged(Location location) {
         serviceCallBack.getCurrentLocation(actionId, location);
     }
-
 
     public class LocalBinder extends Binder {
         public LocationService getServiceInstance() {
@@ -111,156 +88,73 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         this.serviceCallBack = (LocationServiceCallBack) activity;
     }
 
-    private boolean getCurrentLocation(int minTime) {
-        String provider = locationManager.getBestProvider(criteria, true);
-        if (provider != null) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                Log.e(TAG, "onCreate: no provided");
-                return false;
-            }
-            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                locationManager.requestLocationUpdates(provider, minTime, 1, locationListener);
-                return true;
-            } else {
-                return false;
-            }
-        } else {
-            Log.e(TAG, "onCreate: provider null");
-            return false;
-        }
-    }
-
     private int actionId;
 
-    public boolean getCurrentLocationIn(boolean method) {
-        if (method) {
-            stopLocationUpdates();
-            actionId = ACTION_IN;
-            return startLocationUpdates();
+    private Location getCurrentLocation() {
+        Log.e(TAG, "getCurrentLocation: " + googleMethod);
+        Location location = null;
+        if (googleMethod) {
+            location = googleLocation.getLocation(lastLocation, this);
         } else {
-            removeListener();
-            locationListener = new AsistenciaLocationListener(ACTION_IN);
-            return getCurrentLocation(5000);
+            nativeLocation.removeListener(locationListener);
+            if (lastLocation) {
+                location = nativeLocation.getLastLocation();
+            } else {
+                nativeLocation.requestLocation(getApplicationContext(), 1000, locationListener);
+            }
         }
+        return location;
     }
 
-    public boolean getCurrentLocationCheck(boolean method) {
-        if (method) {
-            stopLocationUpdates();
-            actionId = ACTION_CHECK;
-            return startLocationUpdates();
-        } else {
-            removeListener();
-            locationListener = new AsistenciaLocationListener(ACTION_CHECK);
-            return getCurrentLocation(1000 * 60);
-        }
+    public Location getCurrentLocationIn() {
+        actionId = ACTION_IN;
+        locationListener = new AsistenciaLocationListener(ACTION_IN);
+        // 5000
+        return getCurrentLocation();
     }
 
-    public Location getLocationOut(boolean method) {
+    public Location getCurrentLocationCheck() {
+        actionId = ACTION_CHECK;
+        locationListener = new AsistenciaLocationListener(ACTION_CHECK);
+        // 1000 * 60
+        Log.e(TAG, "getCurrentLocationCheck: ");
+        return getCurrentLocation();
+    }
+
+    public Location getLocationOut() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "getLocationOut: fuck");
             return null;
         }
-        if (method) {
-            stopLocationUpdates();
-            return LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
+        if (googleMethod) {
+            googleLocation.stopLocationUpdates(this);
+            return googleLocation.lastLocation();
         } else {
-            removeListener();
-            return locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            nativeLocation.removeListener(locationListener);
+            return nativeLocation.getLastLocation();
         }
     }
 
-    public void stopRequest(boolean method) {
-        if (method) {
-            stopLocationUpdates();
+    public void stopRequest() {
+        Log.e(TAG, "stopRequest: ");
+        if (googleMethod) {
+            googleLocation.stopLocationUpdates(this);
         } else {
-            removeListener();
+            nativeLocation.removeListener(locationListener);
         }
-    }
-
-    private GoogleApiClient googleApiClient;
-
-    private void googleLocationServices() {
-        if (googleApiClient == null) {
-            googleApiClient = new GoogleApiClient.Builder(this)
-                    .addConnectionCallbacks(this)
-                    .addOnConnectionFailedListener(this)
-                    .addApi(LocationServices.API)
-                    .build();
-        }
-        googleApiClient.connect();
-
-        createLocationRequest();
-    }
-
-    private LocationRequest mLocationRequest;
-
-    protected void createLocationRequest() {
-        mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(1000 * 30);
-        mLocationRequest.setFastestInterval(1000 * 60);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
-                .addLocationRequest(mLocationRequest);
-        PendingResult<LocationSettingsResult> result =
-                LocationServices.SettingsApi.checkLocationSettings(googleApiClient,
-                        builder.build());
-        result.setResultCallback(new ResultCallback<LocationSettingsResult>() {
-            @Override
-            public void onResult(@NonNull LocationSettingsResult locationSettingsResult) {
-                final Status status = locationSettingsResult.getStatus();
-//                final LocationSettingsStates locationSettingsStates = locationSettingsResult.getLocationSettingsStates();
-                switch (status.getStatusCode()) {
-                    case LocationSettingsStatusCodes.SUCCESS:
-                        break;
-                    case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
-                        Log.e(TAG, "onResult: RESOLUTION_REQUIRED");
-                        break;
-                    case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-                        Log.e(TAG, "onResult: SETTINGS_CHANGE_UNAVAILABLE");
-                        break;
-                }
-            }
-        });
-    }
-
-    private boolean startLocationUpdates() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Log.e(TAG, "startLocationUpdates: no hay permisos");
-            return false;
-        }
-        LocationServices.FusedLocationApi.requestLocationUpdates(
-                googleApiClient, mLocationRequest, this);
-        return true;
-    }
-
-    private void stopLocationUpdates() {
-        LocationServices.FusedLocationApi.removeLocationUpdates(googleApiClient, this);
     }
 
     @Override
     public void onDestroy() {
-        googleApiClient.disconnect();
+        if (googleMethod) {
+            googleLocation.disconnect();
+        }
         super.onDestroy();
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.cancel(Notification.FLAG_ONGOING_EVENT);
     }
 
-    public void removeListener() {
-        if (locationManager != null) {
-            try {
-                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    Log.e(TAG, "onDestroy: not provided");
-                    return;
-                }
-                locationManager.removeUpdates(locationListener);
-            } catch (Exception ex) {
-//                Log.i(TAG, "fail to remove location listners, ignore", ex);
-            }
-        }
-    }
-
-    private class AsistenciaLocationListener implements LocationListener {
+    public class AsistenciaLocationListener implements LocationListener {
         private int actionId;
 
         public AsistenciaLocationListener(int actionId) {
@@ -290,5 +184,17 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 
     public interface LocationServiceCallBack {
         void getCurrentLocation(int actionId, Location currentLocation);
+    }
+
+    public void setGoogleMethod(boolean googleMethod) {
+        this.googleMethod = googleMethod;
+    }
+
+    public void setLastLocation(boolean lastLocation) {
+        this.lastLocation = lastLocation;
+    }
+
+    public boolean isLastLocation() {
+        return this.lastLocation;
     }
 }

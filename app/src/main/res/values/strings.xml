@@ -12,4 +12,5 @@
     <string name="button_text_in">Ingresar</string>
     <string name="button_text_out">Salir</string>
     <string name="menu_method">Google</string>
+    <string name="menu_last_location">Last Location</string>
 </resources>
