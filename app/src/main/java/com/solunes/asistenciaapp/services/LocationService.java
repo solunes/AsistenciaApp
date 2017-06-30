@@ -73,11 +73,6 @@ public class LocationService extends Service implements com.google.android.gms.l
         return START_NOT_STICKY;
     }
 
-    @Override
-    public void onLocationChanged(Location location) {
-        serviceCallBack.getCurrentLocation(actionId, location);
-    }
-
     public class LocalBinder extends Binder {
         public LocationService getServiceInstance() {
             return LocationService.this;
@@ -150,8 +145,12 @@ public class LocationService extends Service implements com.google.android.gms.l
             googleLocation.disconnect();
         }
         super.onDestroy();
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.cancel(Notification.FLAG_ONGOING_EVENT);
+    }
+
+
+    @Override
+    public void onLocationChanged(Location location) {
+        serviceCallBack.getCurrentLocation(actionId, location);
     }
 
     public class AsistenciaLocationListener implements LocationListener {
